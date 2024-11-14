@@ -1,0 +1,875 @@
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: fire
+  namespace: ns-fire
+  annotations:
+    flux.weave.works/automated: "false"
+spec:
+  releaseName: fire
+  chart:
+    spec:
+      chart: .
+      sourceRef:
+        kind: GitRepository
+        name: finance-helm-fire-master
+        namespace: flux-fire
+  values:
+    global:
+      environment: production
+      vaultEnv: vault-pr
+      vaultNs: vault
+      namespace:
+        suffix: ""
+    nameOverride: "fire"
+    fullnameOverride: ""
+    resources: {}
+    nodeSelector:
+      type: app
+    tolerations: []
+    affinity: {}
+    virtualService:
+      fqdn: app-finance.dktapp.cloud
+      
+    ##### PARAMETER #####
+    parameter:
+      livenessProbe:
+        initialDelaySeconds: 60
+        periodSeconds: 20
+      readinessProbe:
+        initialDelaySeconds: 60
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 1Gi
+        requests:
+          cpu: 200m
+          memory: 512Mi
+      nodeSelector:
+        type: app
+      image:
+        repository: europe-docker.pkg.dev/finance-6ztj/apps/fire/finance-api-fire-parameter
+        tag: 3589c86-202411121646
+      replicaCount: 1
+      springConfiguration:
+        "logging.level.root": WARN
+        "JAVA_ARGS": -Dcom.decathlon.environment=PRODUCTION
+        "DECATHLON_SWAGGERUI_OAUTH2_CLIENTID": xxxxx
+        "SERVER_SERVLET_CONTEXT-PATH": /fire/api/parameter
+        "SPRING_DATASOURCE_PASSWORD": secret:ns-fire/fire/app#postgres-password
+        "SPRING_DATASOURCE_URL": jdbc:postgresql://postgre-pr-eu-peered-finance-fire.aivencloud.com:12656/fire_parameter?sslmode=require
+        "SPRING_DATASOURCE_USERNAME": secret:ns-fire/fire/app#postgres-user
+        "SPRINGFOX_DOCUMENTATION_SWAGGER_V2_PATH": /fire/api/parameter
+        "security.oauth2.resourceserver.jwt.jwk-set-uri": https://idpdecathlon.oxylane.com/ext/JWKS
+        "security.oauth2.resourceserver.jwt.issuer": idpdecathlon
+        "swagger-authorization-url": https://idpdecathlon.oxylane.com/as/authorization.oauth2
+        "fire.parameter.api-management.url": https://api-eu.subsidia.org/fire/
+        "fire.parameter.oauth.client-id": secret:ns-fire/fire/app#oauth-cc-client-id
+        "fire.parameter.oauth.client-secret": secret:ns-fire/fire/app#oauth-cc-client-secret
+        "fire.parameter.oauth.token-uri": https://idpdecathlon.oxylane.com/as/token.oauth2
+        "fire.parameter.oauth.scope": openid profile
+        "fire.parameter.oauth.grant-type": client_credentials
+        "cube.accounting.base.url": https://api-eu.subsidia.org/accounting/
+        "till-psp.base-url": https://api-global.decathlon.net/till-psp/api/v1/transactions
+        "till-psp.api-key": secret:ns-fire/fire/app#till-psp-api-key
+        "cube.accounting.api.key": secret:ns-fire/fire/app#api-key-psp
+        "masterdata.url": https://api-eu.subsidia.org/masterdata/v2/
+        "masterdata.api.key": secret:ns-fire/fire/app#api-key-masterdata
+        "mop.data.url": https://api-eu.decathlon.net/posdata_referential/api/v1/tenders
+        "mop.api.key": secret:ns-fire/fire/app#api-key-posdata_referential
+        "mop.api.env": re7
+        "store.api.env": re7
+        "store.api.key": secret:ns-fire/fire/app#api-key-one-store
+        "store.data.url": https://api.decathlon.net/onestore-api/api/v1/shop?fields%5Bshop%5D=franchised&page%5Bsize%5D=10000
+        "masterfi.exchange-rate.url": https://api-eu.subsidia.org/masterfi_exchange_rate/v1
+        "masterfi.exchange-rate.key": secret:ns-fire/fire/app#api-key-masterfi
+        "masterfi.accounting-structure.url": https://api-eu.subsidia.org/masterfi_accounting_structure/v1/
+        "masterfi.accounting-structure.key": secret:ns-fire/fire/app#masterfi-accounting-structure-api-key
+        "spring.redis.host": fire-redis.ns-fire.svc.cluster.local
+        "spring.redis.port": 6379
+        "spring.security.oauth2.resourceserver.jwt.userinfo-endpoint": https://idpdecathlon.oxylane.com/idp/userinfo.openid
+        "security.oauth2.authorized-token-names": secret:ns-fire/fire/app#oauth-cc-client-id
+        "fire.parameter.application.environment": prod
+        #jaeger-to-kafka
+        "com.decathlon.finance.jaegertokafka.kafka.bootstrapServers": kafka-pr-fire-eu-peered-finance-fire.a.aivencloud.com:12658
+        "com.decathlon.finance.jaegertokafka.kafka.schemaRegistry": https://kafka-pr-fire-eu-peered-finance-fire.a.aivencloud.com:12661
+        "com.decathlon.finance.jaegertokafka.kafka.username": secret:ns-fire/fire/app#kafka-fire-aiven-username
+        "com.decathlon.finance.jaegertokafka.kafka.password": secret:ns-fire/fire/app#kafka-fire-aiven-password
+        "com.decathlon.finance.jaegertokafka.kafka.topic": decathlon_finance_jaeger_tracing
+        #"com.decathlon.finance.jaegertokafka.kafka.topic-trace": decathlon_finance_prod_fire_tracing
+        "com.decathlon.finance.jaegertokafka.kafka.topic-trace": none
+        "keystore-generator.ssl-endpoints.finance.access-key": secret:ns-fire/fire/app#kafka-fire-aiven-access-key
+        "keystore-generator.ssl-endpoints.finance.access-certificate": secret:ns-fire/fire/app#kafka-fire-aiven-access-cert
+        "keystore-generator.ssl-endpoints.finance.ca-certificate": secret:ns-fire/fire/app#kafka-fire-aiven-ca-cert
+        "application.name": FIRE
+        "service.account.json.file.path": blank
+        "gsheet.json.credentials": secret:ns-fire/fire/app#gsheet-json-credentials
+        
+    ##### FRONT #####
+    front:
+      image:
+        repository: europe-docker.pkg.dev/finance-6ztj/apps/fire/front
+        tag: c30986f-202410141007
+      nodeSelector:
+        type: app
+      replicaCount: 1
+      environment:
+        "ANGULAR_CLIENT_BASE_URL": https://app-finance.dktapp.cloud
+        "ANGULAR_CLIENT_ID": public:ns-fire/fire/app#oauth-pkce-client-id
+        "ANGULAR_ENVIRONMENT": prod
+        "ANGULAR_FEDID": prod
+        "ANGULAR_HMR": false
+        "ANGULAR_PRODUCTION": true
+        "ANGULAR_SERVER_BASE_URL": https://api-eu.subsidia.org/fire
+        "ANGULAR_FEDID_URL": https://idpdecathlon.oxylane.com
+        "ANGULAR_REDIRECT_URL": https://app-finance.dktapp.cloud/fire/auth/callback
+        "ANGULAR_URL_ACCOUNTING": /api/flow-sender/v1/
+        "ANGULAR_URL_GENERATOR": /api/generator/v1/
+        "ANGULAR_URL_PARAMETER": /api/parameter/v1/
+        "ANGULAR_URL_RECEIVER": /api/receiver-poslog/v1/
+        "ANGULAR_URL_BOSS_RECEIVER": /api/boss/receiver/v1/
+        "ANGULAR_VERSION": 0.0.1
+        "ANGULAR_API_KEY": public:ns-fire/fire/app#api-key-fire-v2
+        "ANGULAR_BASE_HREF": /fire
+        
+    ##### FLOW-SENDER #####
+    flow-sender:
+      nodeSelector:
+        type: app
+      livenessProbe:
+        initialDelaySeconds: 90
+        periodSeconds: 20
+        failureThreshold: 2
+      resources:
+        limits:
+          cpu: 400m
+          memory: 2Gi
+        requests:
+          cpu: 250m
+          memory: 512Mi
+      image:
+        repository: europe-docker.pkg.dev/finance-6ztj/apps/fire/finance-loader-fire-flow-sender
+        tag: 2593759-202411071555
+      replicaCount: 1
+      springConfiguration:
+        "logging.level.root": WARN
+        "spring.redis.host": fire-redis.ns-fire.svc.cluster.local
+        "spring.redis.port": 6379
+        "server.servlet.context-path": /fire/api/flow-sender
+        "JAVA_ARGS": -Dcom.decathlon.environment=PRODUCTION
+        "decathlon.swaggerui.oauth2.clientid": xxxx
+         # Use for consumer
+        "fire.flow-sender.kafka.group-id": fire-accounting_prod
+        # Use for producer Journal Entry
+        "fire.flow-sender.kafka.client": flow-sender-prod
+        #Exactin
+        "fire.flow-sender.exactin.api.key": secret:ns-fire/fire/app#api-key-exactin
+        "fire.flow-sender.exactin.api.url": https://api-eu.subsidia.org/fin_journal_entry
+        #KafkaFinanceproperties
+        "fire.flow-sender.kafka.accounting-document.bootstrap-servers": kafka-pr-fire-eu-peered-finance-fire.a.aivencloud.com:12658
+        "fire.flow-sender.kafka.accounting-document.schema-registry": https://kafka-pr-fire-eu-peered-finance-fire.a.aivencloud.com:12661
+        "fire.flow-sender.kafka.accounting-document.topic-pattern": decathlon_finance_prod_fire_public_accountingDocument_1_(data|reprocessing)
+        "fire.flow-sender.kafka.journalEntry.topic-prefix": decathlon_finance_prod_fire_private_journalEntry_
+        "fire.flow-sender.kafka.password": secret:ns-fire/fire/app#kafka-fire-aiven-password
+        "fire.flow-sender.kafka.username": secret:ns-fire/fire/app#kafka-fire-aiven-username
+        "keystore-generator.ssl-endpoints.finance.access-key": secret:ns-fire/fire/app#kafka-fire-aiven-access-key
+        "keystore-generator.ssl-endpoints.finance.access-certificate": secret:ns-fire/fire/app#kafka-fire-aiven-access-cert
+        "keystore-generator.ssl-endpoints.finance.ca-certificate": secret:ns-fire/fire/app#kafka-fire-aiven-ca-cert
+        #test module
+        "fire.flow-sender.test-module.accountin-url-preprod": https://api.preprod.subsidia.org/fin_journal_entry
+        "fire.flow-sender.test-module.accountin-key-preprod": secret:ns-fire/fire/app#api-key-exactin-preprod
+        "fire.flow-sender.test-module.fire-client-id-preprod": secret:ns-fire/fire/app#oauth-cc-client-id-preprod
+        "fire.flow-sender.test-module.fire-client-secret-preprod": secret:ns-fire/fire/app#oauth-cc-client-secret-preprod
+        "fire.flow-sender.test-module.token-url-preprod": https://preprod.idpdecathlon.oxylane.com/as/token.oauth2
+        #SecurityOAuth2clientconfiguration
+        "security.oauth2.resourceserver.jwt.jwk-set-uri": https://idpdecathlon.oxylane.com/ext/JWKS
+        "security.oauth2.resourceserver.jwt.issuer": idpdecathlon
+        #feign
+        "feign.client.fire-parameter.url": https://api-eu.subsidia.org/fire/
+        "feign.client.fire-parameter.api-key": secret:ns-fire/fire/app#api-key-fire-v2
+        "com.decathlon.finance.fedid.fedid-url": https://idpdecathlon.oxylane.com/as/token.oauth2
+        "com.decathlon.finance.fedid.fedid-client-id": secret:ns-fire/fire/app#oauth-cc-client-id
+        "com.decathlon.finance.fedid.fedid-client-secret": secret:ns-fire/fire/app#oauth-cc-client-secret
+        "com.decathlon.finance.ldap-api-sdk.ldap-api-url": https://api-eu.subsidia.org/directory/
+        "com.decathlon.finance.ldap-api-sdk.ldap-api-key": secret:ns-fire/fire/app#ldap-api-key
+        #jaeger
+        "com.decathlon.finance.jaegertokafka.kafka.topic": decathlon_finance_jaeger_tracing
+        #"com.decathlon.finance.jaegertokafka.kafka.topic-trace": decathlon_finance_prod_fire_tracing
+        "com.decathlon.finance.jaegertokafka.kafka.topic-trace": none
+        #accounting finance
+        "fire.flow-sender.api.url": https://api-eu.subsidia.org/finance_accounting/api/v1/fiscal_companies/{fiscal_company_number}/open_period
+        "fire.flow-sender.api.key": secret:ns-fire/fire/app#finance-accounting-api-key
+        #swagger
+        "swagger-authorization-url": https://idpdecathlon.oxylane.com/as/authorization.oauth2
+        "spring.security.oauth2.resourceserver.jwt.userinfo-endpoint": https://idpdecathlon.oxylane.com/idp/userinfo.openid
+        #oauth
+        "finance.security.oauth2.client.fedid-url": https://idpdecathlon.oxylane.com/as/token.oauth2
+        "finance.security.oauth2.client.fedid-client-id": secret:ns-fire/fire/app#oauth-cc-client-id
+        "finance.security.oauth2.client.fedid-client-secret": secret:ns-fire/fire/app#oauth-cc-client-secret
+        
+    ##### REDIS #####
+    redis:
+      resources:
+        limits:
+          cpu: 400m
+          memory: 600Mi
+        requests:
+          cpu: 50m
+          memory: 300Mi
+      image:
+        repository: europe-docker.pkg.dev/finance-6ztj/devops/redis
+        tag: "7"
+      replicaCount: 1
+      nodeSelector:
+        type: app
+
+    ##### ROUTER #####
+    poslog-router:
+      livenessProbe:
+        initialDelaySeconds: 60
+        periodSeconds: 20
+      readinessProbe:
+        initialDelaySeconds: 60
+#      resources:
+#        limits:
+#          cpu: 2000m
+#          memory: 4Gi
+#        requests:
+#          cpu: 700m
+#          memory: 3Gi
+      image:
+        repository: europe-docker.pkg.dev/finance-6ztj/apps/fire/finance-loader-fire-poslog-router
+        tag: e78037c-202410140958
+      replicaCount: 1
+      springConfiguration:
+        "logging.level.root": WARN
+        "fire.sender.online": cube,poslogmanager,svielog,dtc-cpgpr
+        "fire.sender.offline": cubeinstore,divapos,erply,et,laura,openbravo,selfcheckout,setretail10,winpos,wynd
+        "fire.chopper-tiers": 50-11111-11111,50-22222-22222  
+        #KAFKA POSDATA POSLOG PROD EUROPE
+        "fire.poslog-router.kafka.posdata.eu.bootstrap-server": public-kafka-f5188b92-9066-d531-3e10-2e906aa06e98-posdata-produ.aivencloud.com:12668
+        "fire.poslog-router.kafka.posdata.eu.schema-registry": https://public-kafka-f5188b92-9066-d531-3e10-2e906aa06e98-posdata-produ.aivencloud.com:12661
+        "fire.poslog-router.kafka.posdata.eu.username": fire
+        "fire.poslog-router.kafka.posdata.eu.password": secret:ns-fire/fire/app#kafka-posdata-poslog-password-prod
+        "fire.poslog-router.kafka.posdata.eu.consumer-group-id": FIRE_V2_CONSUMER_GROUP
+        "fire.poslog-router.kafka.posdata.eu.input-topics": ret_poslog_v1_eu.*(at|be|bg|ca|cd|ch|ci|cl|co|cz|de|dz|ee|es|eg|fr|gb|gh|gr|hr|hu|ie|il|it|ke|kz|lt|lu|lv|ma|mt|mx|nl|pl|pt|ro|rs|se|si|sk|sl|sn|tn|tr|ua|uk|za|us)
+        "keystore-generator.ssl-endpoints.posdata-eu.access-key": secret:ns-fire/fire/app#kafka-posdata-poslog-access-key
+        "keystore-generator.ssl-endpoints.posdata-eu.access-certificate": secret:ns-fire/fire/app#kafka-posdata-poslog-access-cert
+        "keystore-generator.ssl-endpoints.posdata-eu.ca-certificate": secret:ns-fire/fire/app#kafka-posdata-poslog-ca-cert
+        "fire.poslog-router.kafka.posdata.eu.type": posdata-eu
+        #KAFKA POSDATA POSLOG PROD ASIA
+        "fire.poslog-router.kafka.posdata.as.bootstrap-server": public-kafka-posdata-as-prod-posdata-as-prod.aivencloud.com:12668
+        "fire.poslog-router.kafka.posdata.as.schema-registry": https://public-kafka-posdata-as-prod-posdata-as-prod.aivencloud.com:12661
+        "fire.poslog-router.kafka.posdata.as.username": avnadmin
+        "fire.poslog-router.kafka.posdata.as.password": secret:ns-fire/fire/app#kafka-posdata-asia-prod-aiven-password
+        "fire.poslog-router.kafka.posdata.as.consumer-group-id": FIRE_CONSUMER_GROUP
+        "fire.poslog-router.kafka.posdata.as.input-topics": ret_poslog_v1_as.*(au|hk|id|in|jp|kh|kr|lk|my|ph|sg|th|tw|vn)|ret_poslog_v1_cn_cn
+        "keystore-generator.ssl-endpoints.posdata-as.access-key": secret:ns-fire/fire/app#kafka-posdata-asia-prod-aiven-access-key
+        "keystore-generator.ssl-endpoints.posdata-as.access-certificate": secret:ns-fire/fire/app#kafka-posdata-asia-prod-aiven-access-certificate
+        "keystore-generator.ssl-endpoints.posdata-as.ca-certificate": secret:ns-fire/fire/app#kafka-posdata-asia-prod-aiven-ca-certificate
+        "fire.poslog-router.kafka.posdata.as.type": posdata-as
+        #KAFKA FINANCE PROD
+        "fire.poslog-router.kafka.finance.bootstrap-server": kafka-pr-fire-eu-peered-finance-fire.a.aivencloud.com:12658
+        "fire.poslog-router.kafka.finance.schema-registry": https://kafka-pr-fire-eu-peered-finance-fire.a.aivencloud.com:12661
+        "fire.poslog-router.kafka.finance.password": secret:ns-fire/fire/app#kafka-fire-aiven-password
+        "fire.poslog-router.kafka.finance.username": secret:ns-fire/fire/app#kafka-fire-aiven-username
+        "fire.poslog-router.kafka.finance.client": router-prod
+        "fire.poslog-router.kafka.finance.output-topic-online": decathlon_finance_prod_fire_private_onlinePoslog
+        "fire.poslog-router.kafka.finance.output-topic-offline": decathlon_finance_prod_fire_private_offlinePoslog
+        "com.decathlon.finance.jaegertokafka.kafka.topic": decathlon_finance_jaeger_tracing
+        #"com.decathlon.finance.jaegertokafka.kafka.topic-trace": decathlon_finance_prod_fire_tracing
+        "com.decathlon.finance.jaegertokafka.kafka.topic-trace": none
+        "keystore-generator.ssl-endpoints.finance.access-key": secret:ns-fire/fire/app#kafka-fire-aiven-access-key
+        "keystore-generator.ssl-endpoints.finance.access-certificate": secret:ns-fire/fire/app#kafka-fire-aiven-access-cert
+        "keystore-generator.ssl-endpoints.finance.ca-certificate": secret:ns-fire/fire/app#kafka-fire-aiven-ca-cert
+        "fire.poslog-router.kafka.finance.type": finance
+#        "SPRING_BOOT_MEMORY": 2g
+      nodeSelector:
+        type: app
+
+    ##### RECEIVER POSLOG #####
+    receiver-poslog:
+      nodeSelector:
+        type: app
+      livenessProbe:
+        initialDelaySeconds: 90
+        periodSeconds: 20
+        failureThreshold: 2
+      resources:
+        limits:
+          cpu: 1500m
+          memory: 7Gi
+        requests:
+          cpu: 700m
+          memory: 3Gi
+      image:
+        repository: europe-docker.pkg.dev/finance-6ztj/apps/fire/finance-api-fire-receiver
+        tag: 5f76a0f-202410140958
+      replicaCount: 1
+      springConfiguration:
+        "logging.level.root": WARN
+        "spring.data.redis.host": fire-redis.ns-fire.svc.cluster.local
+        "spring.data.redis.port": 6379
+        "fire.receiver.index.offline": offline_key
+        "fire.receiver.index.online": online_key
+        "fire.receiver.index.unbalanced": unbalanced_key
+        "fire.receiver.chopper-tiers": 50-229-229,50-242-242,50-172-172,50-311-311,50-195-195,50-230-230,50-220-220,50-161-161,50-158-158,50-156-156,50-189-189,50-66-66,50-164-164,50-126-126,50-78-78,50-125-125,50-162-162,50-122-122,50-210-210,50-298-298,50-242-242,50-199-199,50-250-250,50-165-165,50-218-218,50-222-222,50-215-215,50-213-213,50-157-157,50-175-175,50-124-124,50-202-202,50-292-292,50-158-158,50-161-161,50-220-220,50-230-230,50-195-195,50-172-172,50-311-311,50-229-229,50-257-257,50-307-307,50-306-306,50-312-312,50-313-313,50-285-285,50-287-287,50-70-70,50-295-295,50-22-22,50-291-291,50-68-68,50-191-191,50-212-212,50-121-121,50-69-69,50-206-206,50-314-314,50-98-98,50-24-24,50-288-288,50-11-11,50-333-333,50-334-334,50-335-335,50-336-336,50-337-337,50-338-338,50-339-339,50-340-340,50-341-341,50-342-342,50-127-127,50-219-219,50-216-216
+        "JAVA_ARGS": -Dcom.decathlon.environment=PRODUCTION
+        ## NEW HISTO SYSTEM
+        "fire.receiver.kafka.finance.history-topic-offline": decathlon_finance_prod_fire_private_offline_keys
+        "fire.receiver.kafka.finance.history-topic-online": decathlon_finance_prod_fire_private_online_keys
+        "opensearch.uris": https://opensearch-pr-eu-histo-peered-finance-fire.aivencloud.com:12656
+        "opensearch.username": fire
+        "opensearch.password": secret:ns-fire/fire/app#opensearch-histo-password
+        ##KAFKA FINANCE AIVEN
+        "fire.receiver.kafka.finance.username": secret:ns-fire/fire/app#kafka-fire-aiven-username
+        "fire.receiver.kafka.finance.client": receiver-prod
+        "fire.receiver.kafka.finance.sasl-mechanism": SCRAM-SHA-512
+        "fire.receiver.kafka.finance.topic": decathlon_finance_prod_fire_private_offlinePoslog|decathlon_finance_prod_fire_private_offlineRoutedPoslog_reprocessing|decathlon_finance_prod_fire_private_onlinePoslog|decathlon_finance_prod_fire_private_onlineRoutedPoslog_reprocessing
+        "fire.receiver.kafka.finance.reprocessing.histo-key.deletor.topic": decathlon_finance_prod_fire_private_keys_deletor
+        "fire.receiver.kafka.finance.bootstrap-servers": kafka-pr-fire-eu-peered-finance-fire.a.aivencloud.com:12658
+        "fire.receiver.kafka.finance.schema-registry": https://kafka-pr-fire-eu-peered-finance-fire.a.aivencloud.com:12661
+        "fire.receiver.kafka.finance.password": secret:ns-fire/fire/app#kafka-fire-aiven-password
+        "keystore-generator.ssl-endpoints.finance.access-key": secret:ns-fire/fire/app#kafka-fire-aiven-access-key
+        "keystore-generator.ssl-endpoints.finance.access-certificate": secret:ns-fire/fire/app#kafka-fire-aiven-access-cert
+        "keystore-generator.ssl-endpoints.finance.ca-certificate": secret:ns-fire/fire/app#kafka-fire-aiven-ca-cert
+        "fire.receiver.kafka.heartbeat-interval-ms": 3000
+        "fire.receiver.kafka.max-poll-records": 25
+        "fire.receiver.kafka.session-timeout-ms": 10000
+        #new
+        "fire.receiver.kafka.topics.filtered-poslog-data-eu": decathlon_finance_prod_fire_private_filteredPoslog_1_data
+        "fire.receiver.kafka.topics.filtered-poslog-data-as": decathlon_finance_prod_fire_private_filteredPoslog_as_1_data
+        "fire.receiver.kafka.topics.filtered-poslog-data-us": decathlon_finance_prod_fire_private_filteredPoslog_us_1_data
+        "fire.receiver.kafka.topics.filtered-poslog-error": decathlon_finance_prod_fire_private_filteredPoslog_1_error
+        ## UNBALANCED REPLAY FOK
+        "fire.receiver.posdata.api-url": https://api.decathlon.net/posdata_api/poslogs/
+        "fire.receiver.posdata.api-key": secret:ns-fire/fire/app#api-key-posdata
+        "fire.receiver.posdata.api-url-china": https://api-cn.dktapp.cloud/posdata_api/poslogs/
+        "fire.receiver.posdata.api-key-china": secret:ns-fire/fire/app#api-key-posdata-cn
+        "fire.receiver.unbalanced-reprocessing.client-id": secret:ns-fire/fire/app#oauth-cc-client-id
+        "fire.receiver.unbalanced-reprocessing.client-secret": secret:ns-fire/fire/app#oauth-cc-client-secret
+        "fire.receiver.unbalanced-reprocessing.grant-type": client_credentials
+        "fire.receiver.unbalanced-reprocessing.token-uri": https://idpdecathlon.oxylane.com/as/token.oauth2
+        "com.decathlon.finance.fedid.fedid-url": https://idpdecathlon.oxylane.com/as/token.oauth2
+        "com.decathlon.finance.fedid.fedid-client-id": secret:ns-fire/fire/app#oauth-cc-client-id
+        "com.decathlon.finance.fedid.fedid-client-secret": secret:ns-fire/fire/app#oauth-cc-client-secret
+        "com.decathlon.finance.ldap-api-sdk.ldap-api-url": https://api-eu.subsidia.org/directory/
+        "com.decathlon.finance.ldap-api-sdk.ldap-api-key": secret:ns-fire/fire/app#ldap-api-key
+        "server.servlet.context-path": /fire/api/receiver-poslog
+        "security.oauth2.resourceserver.jwt.jwk-set-uri": https://idpdecathlon.oxylane.com/ext/JWKS
+        "security.oauth2.resourceserver.jwt.issuer": idpdecathlon
+        "security.oauth2.authorized-token-names": secret:ns-fire/fire/app#oauth-cc-client-id
+        "com.decathlon.finance.jaegertokafka.kafka.topic": decathlon_finance_jaeger_tracing
+        #"com.decathlon.finance.jaegertokafka.kafka.topic-trace": decathlon_finance_prod_fire_tracing
+        "com.decathlon.finance.jaegertokafka.kafka.topic-trace": none
+        "spring.security.oauth2.resourceserver.jwt.userinfo-endpoint": https://idpdecathlon.oxylane.com/idp/userinfo.openid
+        #####  LIBRARY CONNECT #####
+        # DATABASE
+        "spring.datasource.url": jdbc:postgresql://postgre-pr-eu-peered-finance-fire.aivencloud.com:12656/fire_parameter?sslmode=require
+        "spring.datasource.username": secret:ns-fire/fire/app#postgres-user
+        "spring.datasource.password": secret:ns-fire/fire/app#postgres-password
+        # ONE STORE API
+        "store.data.url": https://api.decathlon.net/onestore-api/api/v1/shop?fields%5Bshop%5D=franchised&page%5Bsize%5D=10000
+        "store.api.env": re7
+        "store.api.key": secret:ns-fire/fire/app#api-key-one-store
+
+    ##### RECEIVER BOSS #####
+    receiver-boss:
+      livenessProbe:
+        initialDelaySeconds: 90
+        periodSeconds: 20
+        failureThreshold: 2
+      resources:
+        limits:
+          cpu: 1500m
+          memory: 2048Mi
+        requests:
+          cpu: 500m
+          memory: 1024Mi
+      image:
+        repository: europe-docker.pkg.dev/finance-6ztj/apps/fire/finance-api-fire-boss-receiver
+        tag: eacdef5-202410140950
+      replicaCount: 1
+      springConfiguration:
+        "logging.level.root": WARN
+        "JAVA_ARGS": -Dcom.decathlon.environment=PRODUCTION
+        "spring.data.redis.host": fire-redis.ns-fire.svc.cluster.local
+        "spring.data.redis.port": 6379
+        #Consumer group-id for boss-world / boss-china / reprocessing
+        "fire.receiver.kafka.group-id": FIRE_CONSUMER_GROUP_RECEIVER_BOSS_PROD
+        #Client use for transaction id prefix and environment definition (PROD/PREPROD/PIC)
+        "fire.receiver.kafka.client": receiver-boss-prod
+        "fire.receiver.index": boss_key
+        #kafka config
+        ##KAFKA FINANCE
+        "fire.receiver.kafka.finance.bootstrap-server": kafka-pr-fire-eu-peered-finance-fire.a.aivencloud.com:12658
+        "fire.receiver.kafka.finance.schema-registry": https://kafka-pr-fire-eu-peered-finance-fire.a.aivencloud.com:12661
+        "fire.receiver.kafka.finance.username": secret:ns-fire/fire/app#kafka-fire-aiven-username
+        "fire.receiver.kafka.finance.password": secret:ns-fire/fire/app#kafka-fire-aiven-password
+        "keystore-generator.ssl-endpoints.finance.access-key": secret:ns-fire/fire/app#kafka-fire-aiven-access-key
+        "keystore-generator.ssl-endpoints.finance.access-certificate": secret:ns-fire/fire/app#kafka-fire-aiven-access-cert
+        "keystore-generator.ssl-endpoints.finance.ca-certificate": secret:ns-fire/fire/app#kafka-fire-aiven-ca-cert
+        "fire.receiver.kafka.finance.output-topic.cashflow": decathlon_finance_prod_fire_public_filteredCash_
+        "fire.receiver.kafka.finance.output-topic.summary": decathlon_finance_prod_fire_public_filteredSummary_
+        "fire.receiver.kafka.finance.output-topic.declaration": decathlon_finance_prod_fire_public_filteredDeclaration_
+        "fire.receiver.kafka.finance.input-topic.cashflow": decathlon_finance_prod_fire_private_cashflow_reprocessing
+        "fire.receiver.kafka.finance.input-topic.summary": decathlon_finance_prod_fire_private_summary_reprocessing
+        "fire.receiver.kafka.finance.input-topic.declaration": decathlon_finance_prod_fire_private_declaration_reprocessing
+        "fire.receiver.kafka.finance.history-topic": decathlon_finance_prod_fire_private_boss_keys
+        "fire.receiver.kafka.finance.client": receiver-boss-prod
+        ## KAFKA BOSS WORLD
+        "fire.receiver.kafka.boss.world.bootstrap-server": public-kafka-decatec-app-mutu-prod-eu-peered-retail-ibuy.aivencloud.com:12668
+        "fire.receiver.kafka.boss.world.schema-registry": https://public-kafka-decatec-app-mutu-prod-eu-peered-retail-ibuy.aivencloud.com:12661
+        "fire.receiver.kafka.boss.world.username": secret:ns-fire/fire/app#kafka-boss-username
+        "fire.receiver.kafka.boss.world.password": secret:ns-fire/fire/app#kafka-boss-password
+        "fire.receiver.kafka.boss.world.input-topic.cashflow": ret_boss_cashflows_v1.*(eu|as)
+        "fire.receiver.kafka.boss.world.input-topic.summary": ret_boss_summary_bank_deposit_v1.*(eu|as)
+        "fire.receiver.kafka.boss.world.input-topic.declaration": ret_boss_declarations_v1.*(eu|as)
+        "keystore-generator.ssl-endpoints.boss-world.access-key": secret:ns-fire/fire/app#kafka-boss-access-key
+        "keystore-generator.ssl-endpoints.boss-world.access-certificate": secret:ns-fire/fire/app#kafka-boss-access-cert
+        "keystore-generator.ssl-endpoints.boss-world.ca-certificate": secret:ns-fire/fire/app#kafka-boss-ca-cert
+        ## KAFKA BOSS CHINA
+        "fire.receiver.kafka.boss.china.input-topic.cashflow": ret_boss_cashflows_v1_cn
+        "fire.receiver.kafka.boss.china.input-topic.summary": ret_boss_summary_bank_deposit_v1_cn
+        "fire.receiver.kafka.boss.china.input-topic.declaration": ret_boss_declarations_v1_cn
+        "fire.receiver.kafka.boss.china.bootstrap-server": rtmdn1kfk01.dktapp.cloud:9094,rtmdn1kfk02.dktapp.cloud:9094,rtmdn1kfk03.dktapp.cloud:9094
+        "fire.receiver.kafka.boss.china.schema-registry": https://de-schema-registry-rtm-cn.dktapp.cloud
+        "fire.receiver.kafka.boss.china.username": secret:ns-fire/fire/app#kafka-boss-china-username
+        "fire.receiver.kafka.boss.china.password": secret:ns-fire/fire/app#kafka-boss-china-password
+        "fire.receiver.kafka.boss.china.truststore-password": secret:ns-fire/fire/app#kafka-boss-china-truststore-password
+        "fire.receiver.kafka.boss.china.truststore-base64": secret:ns-fire/fire/app#kafka-boss-china-truststore-base64
+        #OPENSEARCH
+        "opensearch.uris": https://opensearch-pr-eu-histo-peered-finance-fire.aivencloud.com:12656
+        "opensearch.username": fire
+        "opensearch.password": secret:ns-fire/fire/app#opensearch-histo-password
+        #feign
+        "com.decathlon.finance.fedid.fedid-url": https://idpdecathlon.oxylane.com/as/token.oauth2
+        "com.decathlon.finance.fedid.fedid-client-id": secret:ns-fire/fire/app#oauth-cc-client-id
+        "com.decathlon.finance.fedid.fedid-client-secret": secret:ns-fire/fire/app#oauth-cc-client-secret
+        "com.decathlon.finance.ldap-api-sdk.ldap-api-url": https://api-eu.subsidia.org/directory/
+        "com.decathlon.finance.ldap-api-sdk.ldap-api-key": secret:ns-fire/fire/app#ldap-api-key
+        "server.servlet.context-path": /fire/api/receiver-boss
+        "security.oauth2.resourceserver.jwt.jwk-set-uri": https://idpdecathlon.oxylane.com/ext/JWKS
+        "security.oauth2.resourceserver.jwt.issuer": idpdecathlon
+        "swagger-authorization-url": https://idpdecathlon.oxylane.com/as/authorization.oauth2
+        "com.decathlon.finance.jaegertokafka.kafka.topic": decathlon_finance_jaeger_tracing
+        #"com.decathlon.finance.jaegertokafka.kafka.topic-trace": decathlon_finance_prod_fire_tracing
+        "com.decathlon.finance.jaegertokafka.kafka.topic-trace": none
+        "spring.security.oauth2.resourceserver.jwt.userinfo-endpoint": https://idpdecathlon.oxylane.com/idp/userinfo.openid
+        #####  LIBRARY CONNECT #####
+        # DATABASE
+        "spring.datasource.url": jdbc:postgresql://postgre-pr-eu-peered-finance-fire.aivencloud.com:12656/fire_parameter?sslmode=require
+        "spring.datasource.username": secret:ns-fire/fire/app#postgres-user
+        "spring.datasource.password": secret:ns-fire/fire/app#postgres-password
+        # MASTERFI ACCOUNTING STRUCTURE API
+        "masterfi.accounting-structure.url": https://api-eu.subsidia.org/masterfi_accounting_structure/v1/
+        "masterfi.accounting-structure.key": secret:ns-fire/fire/app#masterfi-accounting-structure-api-key
+        # ONE STORE API
+        "store.data.url": https://api.decathlon.net/onestore-api/api/v1/shop?fields%5Bshop%5D=franchised&page%5Bsize%5D=10000
+        "store.api.env": re7
+        "store.api.key": secret:ns-fire/fire/app#api-key-one-store
+      nodeSelector:
+        type: app
+
+    ##### GENERATOR #####
+    generator:
+      nodeSelector:
+        type: app
+      resources:
+        limits:
+          cpu: 3000m
+          memory: 6Gi
+        requests:
+          cpu: 1500m
+          memory: 5Gi
+      springConfiguration:
+        "logging.level.root": WARN
+        "JAVA_ARGS": -Dcom.decathlon.environment=PRODUCTION
+        "fire.generator.application.continent": eu
+        "fire.generator.kafka.bootstrap-servers": kafka-pr-fire-eu-peered-finance-fire.a.aivencloud.com:12658
+        "fire.generator.kafka.schema-registry": https://kafka-pr-fire-eu-peered-finance-fire.a.aivencloud.com:12661
+        "keystore-generator.ssl-endpoints.finance.access-key": secret:ns-fire/fire/app#kafka-fire-aiven-access-key
+        "keystore-generator.ssl-endpoints.finance.access-certificate": secret:ns-fire/fire/app#kafka-fire-aiven-access-cert
+        "keystore-generator.ssl-endpoints.finance.ca-certificate": secret:ns-fire/fire/app#kafka-fire-aiven-ca-cert
+        "fire.generator.kafka.topic.accounting-document-data": decathlon_finance_prod_fire_public_accountingDocument_1_data
+        "fire.generator.kafka.topic.filtered-poslog-data": decathlon_finance_prod_fire_private_filteredPoslog_1_data
+        "fire.generator.kafka.application-id.filtered-poslog-data": fire_prod_generator_eu_application_id
+        "fire.generator.application.test-module-active": true
+        "com.decathlon.finance.jaegertokafka.jaeger.service-name": FireGenerator-eu-prod
+        "com.decathlon.finance.jaegertokafka.kafka.client-id": fire-generator-trace-eu-prod
+        "fire.generator.oauth-alternative.token-uri": https://idpdecathlon.oxylane.com/as/token.oauth2
+        "fire.generator.oauth-alternative.client.id": secret:ns-fire/fire/app#oauth-cc-client-id
+        "fire.generator.oauth-alternative.client.secret": secret:ns-fire/fire/app#oauth-cc-client-secret
+        "fire.generator.oauth-alternative.client.password": secret:ns-fire/fire/app#oauth-cc-client-secret
+        "fire.generator.oauth-alternative.scope": openid profile
+        "fire.generator.oauth-alternative.grant-type": password
+        "fire.generator.oauth.client.id": secret:ns-fire/fire/app#oauth-cc-client-id
+        "fire.generator.oauth.client.password": secret:ns-fire/fire/app#oauth-cc-client-secret
+        "fire.generator.oauth.client.secret": secret:ns-fire/fire/app#oauth-cc-client-secret
+        "fire.generator.oauth.token-uri": https://idpdecathlon.oxylane.com/as/token.oauth2
+        "spring.security.oauth2.resourceserver.jwt.userinfo-endpoint": https://idpdecathlon.oxylane.com/idp/userinfo.openid
+        #Kafka Finance properties
+        "fire.generator.kafka.filtered-poslog.window.duration": P1D
+        "fire.generator.kafka.username": secret:ns-fire/fire/app#kafka-fire-aiven-username
+        "fire.generator.kafka.password": secret:ns-fire/fire/app#kafka-fire-aiven-password
+        "fire.generator.kafka.truststore-type": JKS
+        "fire.generator.kafka.auth-credentials-source": USER_INFO
+        "fire.generator.kafka.identification-algorithm": ''
+        "fire.generator.kafka.security-protocol": SSL
+        ##FINANCE
+        "com.decathlon.finance.fedid.fedid-url": https://idpdecathlon.oxylane.com/as/token.oauth2
+        "com.decathlon.finance.fedid.fedid-client-id": secret:ns-fire/fire/app#oauth-cc-client-id
+        "com.decathlon.finance.fedid.fedid-client-secret": secret:ns-fire/fire/app#oauth-cc-client-secret
+        "com.decathlon.finance.ldap-api-sdk.ldap-api-url": https://api-eu.subsidia.org/directory/
+        "com.decathlon.finance.ldap-api-sdk.ldap-api-key": secret:ns-fire/fire/app#ldap-api-key
+        "security.oauth2.authorized-token-names": secret:ns-fire/fire/app#oauth-cc-client-id
+        "server.servlet.context-path": "/fire/api/generator"
+        "JAEGER_ENDPOINT": "https://app-finance.dktapp.cloud/tracing-collector/api/traces"
+        "security.oauth2.resourceserver.jwt.jwk-set-uri": https://idpdecathlon.oxylane.com/ext/JWKS
+        "security.oauth2.resourceserver.jwt.issuer": idpdecathlon
+        "SPRING_BOOT_MEMORY": 4g
+        "com.decathlon.finance.jaegertokafka.kafka.topic": decathlon_finance_jaeger_tracing
+        #"com.decathlon.finance.jaegertokafka.kafka.topic-trace": decathlon_finance_prod_fire_tracing
+        "com.decathlon.finance.jaegertokafka.kafka.topic-trace": none
+        "fire.generator.fiscal.topic": decathlon_finance_prod_fire_fiscal_error_topic
+        "spring.data.redis.host": fire-redis.ns-fire.svc.cluster.local
+        "spring.data.redis.port": 6379
+        #####  LIBRARY CONNECT #####
+        # DATABASE
+        "spring.datasource.url": jdbc:postgresql://postgre-pr-eu-peered-finance-fire.aivencloud.com:12656/fire_parameter?sslmode=require
+        "spring.datasource.username": secret:ns-fire/fire/app#postgres-user
+        "spring.datasource.password": secret:ns-fire/fire/app#postgres-password
+        # MASTERFI ACCOUNTING STRUCTURE API
+        "masterfi.accounting-structure.url": https://api-eu.subsidia.org/masterfi_accounting_structure/v1/
+        "masterfi.accounting-structure.key": secret:ns-fire/fire/app#masterfi-accounting-structure-api-key
+        # MEANS OF PAYMENT
+        "mop.data.url": https://api-eu.decathlon.net/posdata_referential/api/v1/tenders
+        "mop.api.key": secret:ns-fire/fire/app#api-key-posdata_referential
+        "mop.api.env": re7
+        # MASTERDATA
+        "masterdata.url": https://api-eu.subsidia.org/masterdata/v2/
+        "masterdata.api.key": secret:ns-fire/fire/app#api-key-masterdata
+        # TILL PSP
+        "till-psp.base-url": https://api-global.decathlon.net/till-psp/api/v1/transactions
+        "till-psp.api-key": secret:ns-fire/fire/app#till-psp-api-key
+        # CUBE ACCOUNTING API
+        "cube.accounting.base.url": https://api-eu.subsidia.org/accounting/
+        "cube.accounting.api.key": secret:ns-fire/fire/app#api-key-psp
+      image:
+        repository: europe-docker.pkg.dev/finance-6ztj/apps/fire/finance-api-fire-generator
+        tag: 47359ac-202410140950
+      replicaCount: 1
+      livenessProbe:
+        initialDelaySeconds: 90
+        periodSeconds: 20
+        failureThreshold: 2
+        
+    ##### GENERATOR ASIA #####
+    generator-asia:
+      nodeSelector:
+        type: app
+      resources:
+        limits:
+          cpu: 3000m
+          memory: 4Gi
+        requests:
+          cpu: 1500m
+          memory: 3Gi
+      springConfiguration:
+        "logging.level.root": WARN
+        "JAVA_ARGS": -Dcom.decathlon.environment=PRODUCTION
+        "fire.generator.application.continent": as
+
+        "fire.generator.kafka.bootstrap-servers": kafka-pr-fire-eu-peered-finance-fire.a.aivencloud.com:12658
+        "fire.generator.kafka.schema-registry": https://kafka-pr-fire-eu-peered-finance-fire.a.aivencloud.com:12661
+        "keystore-generator.ssl-endpoints.finance.access-key": secret:ns-fire/fire/app#kafka-fire-aiven-access-key
+        "keystore-generator.ssl-endpoints.finance.access-certificate": secret:ns-fire/fire/app#kafka-fire-aiven-access-cert
+        "keystore-generator.ssl-endpoints.finance.ca-certificate": secret:ns-fire/fire/app#kafka-fire-aiven-ca-cert
+        "fire.generator.kafka.topic.accounting-document-data": decathlon_finance_prod_fire_public_accountingDocument_1_data
+        "fire.generator.kafka.topic.filtered-poslog-data": decathlon_finance_prod_fire_private_filteredPoslog_as_1_data
+        "fire.generator.kafka.application-id.filtered-poslog-data": fire_prod_generator_as_application_id
+        "fire.generator.application.test-module-active": false
+        "com.decathlon.finance.jaegertokafka.jaeger.service-name": FireGenerator-as-prod
+        "com.decathlon.finance.jaegertokafka.kafka.client-id": fire-generator-trace-as-prod
+        
+        "fire.generator.oauth-alternative.token-uri": https://idpdecathlon.oxylane.com/as/token.oauth2
+        "fire.generator.oauth-alternative.client.id": secret:ns-fire/fire/app#oauth-cc-client-id
+        "fire.generator.oauth-alternative.client.secret": secret:ns-fire/fire/app#oauth-cc-client-secret
+        "fire.generator.oauth-alternative.client.password": secret:ns-fire/fire/app#oauth-cc-client-secret
+        "fire.generator.oauth-alternative.scope": openid profile
+        "fire.generator.oauth-alternative.grant-type": password
+        "fire.generator.oauth.client.id": secret:ns-fire/fire/app#oauth-cc-client-id
+        "fire.generator.oauth.client.password": secret:ns-fire/fire/app#oauth-cc-client-secret
+        "fire.generator.oauth.client.secret": secret:ns-fire/fire/app#oauth-cc-client-secret
+        "fire.generator.oauth.token-uri": https://idpdecathlon.oxylane.com/as/token.oauth2
+        "spring.security.oauth2.resourceserver.jwt.userinfo-endpoint": https://idpdecathlon.oxylane.com/idp/userinfo.openid
+        #Kafka Finance properties
+        "fire.generator.kafka.filtered-poslog.window.duration": P1D
+        "fire.generator.kafka.username": secret:ns-fire/fire/app#kafka-fire-aiven-username
+        "fire.generator.kafka.password": secret:ns-fire/fire/app#kafka-fire-aiven-password
+        "fire.generator.kafka.truststore-type": JKS
+        "fire.generator.kafka.auth-credentials-source": USER_INFO
+        "fire.generator.kafka.identification-algorithm": ''
+        "fire.generator.kafka.security-protocol": SSL
+        ##FINANCE
+        "server.servlet.context-path": /fire/api/generator-asia
+        "com.decathlon.finance.fedid.fedid-url": https://idpdecathlon.oxylane.com/as/token.oauth2
+        "com.decathlon.finance.fedid.fedid-client-id": secret:ns-fire/fire/app#oauth-cc-client-id
+        "com.decathlon.finance.fedid.fedid-client-secret": secret:ns-fire/fire/app#oauth-cc-client-secret
+        "com.decathlon.finance.ldap-api-sdk.ldap-api-url": https://api-eu.subsidia.org/directory/
+        "com.decathlon.finance.ldap-api-sdk.ldap-api-key": secret:ns-fire/fire/app#ldap-api-key
+        "security.oauth2.authorized-token-names": secret:ns-fire/fire/app#oauth-cc-client-id
+        "JAEGER_ENDPOINT": "https://app-finance.dktapp.cloud/tracing-collector/api/traces"
+        "security.oauth2.resourceserver.jwt.jwk-set-uri": https://idpdecathlon.oxylane.com/ext/JWKS
+        "security.oauth2.resourceserver.jwt.issuer": idpdecathlon
+        "SPRING_BOOT_MEMORY": 2g
+        "com.decathlon.finance.jaegertokafka.kafka.topic": decathlon_finance_jaeger_tracing
+        #"com.decathlon.finance.jaegertokafka.kafka.topic-trace": decathlon_finance_prod_fire_tracing
+        "com.decathlon.finance.jaegertokafka.kafka.topic-trace": none
+        "fire.generator.fiscal.topic": decathlon_finance_prod_fire_fiscal_error_topic
+        "spring.data.redis.host": fire-redis.ns-fire.svc.cluster.local
+        "spring.data.redis.port": 6379
+        #####  LIBRARY CONNECT #####
+        # DATABASE
+        "spring.datasource.url": jdbc:postgresql://postgre-pr-eu-peered-finance-fire.aivencloud.com:12656/fire_parameter?sslmode=require
+        "spring.datasource.username": secret:ns-fire/fire/app#postgres-user
+        "spring.datasource.password": secret:ns-fire/fire/app#postgres-password
+        # MASTERFI ACCOUNTING STRUCTURE API
+        "masterfi.accounting-structure.url": https://api-eu.subsidia.org/masterfi_accounting_structure/v1/
+        "masterfi.accounting-structure.key": secret:ns-fire/fire/app#masterfi-accounting-structure-api-key
+        # MEANS OF PAYMENT
+        "mop.data.url": https://api-eu.decathlon.net/posdata_referential/api/v1/tenders
+        "mop.api.key": secret:ns-fire/fire/app#api-key-posdata_referential
+        "mop.api.env": re7
+        # MASTERDATA
+        "masterdata.url": https://api-eu.subsidia.org/masterdata/v2/
+        "masterdata.api.key": secret:ns-fire/fire/app#api-key-masterdata
+        # TILL PSP
+        "till-psp.base-url": https://api-global.decathlon.net/till-psp/api/v1/transactions
+        "till-psp.api-key": secret:ns-fire/fire/app#till-psp-api-key
+        # CUBE ACCOUNTING API
+        "cube.accounting.base.url": https://api-eu.subsidia.org/accounting/
+        "cube.accounting.api.key": secret:ns-fire/fire/app#api-key-psp
+      image:
+        repository: europe-docker.pkg.dev/finance-6ztj/apps/fire/finance-api-fire-generator
+        tag: 47359ac-202410140950
+      replicaCount: 1
+      livenessProbe:
+        initialDelaySeconds: 90
+        periodSeconds: 20
+        failureThreshold: 2
+
+    ##### GENERATOR US ###
+    generator-us:
+      nodeSelector:
+        type: app
+      resources:
+        limits:
+          cpu: 3000m
+          memory: 4Gi
+        requests:
+          cpu: 1500m
+          memory: 3Gi
+      springConfiguration:
+        "logging.level.root": WARN
+        "JAVA_ARGS": -Dcom.decathlon.environment=PRODUCTION
+        "fire.generator.application.continent": us
+
+        "fire.generator.kafka.bootstrap-servers": kafka-pr-fire-eu-peered-finance-fire.a.aivencloud.com:12658
+        "fire.generator.kafka.schema-registry": https://kafka-pr-fire-eu-peered-finance-fire.a.aivencloud.com:12661
+        "keystore-generator.ssl-endpoints.finance.access-key": secret:ns-fire/fire/app#kafka-fire-aiven-access-key
+        "keystore-generator.ssl-endpoints.finance.access-certificate": secret:ns-fire/fire/app#kafka-fire-aiven-access-cert
+        "keystore-generator.ssl-endpoints.finance.ca-certificate": secret:ns-fire/fire/app#kafka-fire-aiven-ca-cert
+        "fire.generator.kafka.topic.accounting-document-data": decathlon_finance_prod_fire_public_accountingDocument_1_data
+        "fire.generator.kafka.topic.filtered-poslog-data": decathlon_finance_prod_fire_private_filteredPoslog_us_1_data
+        "fire.generator.kafka.application-id.filtered-poslog-data": fire_prod_generator_us_application_id
+        "fire.generator.application.test-module-active": false
+        "com.decathlon.finance.jaegertokafka.jaeger.service-name": FireGenerator-us-prod
+        "com.decathlon.finance.jaegertokafka.kafka.client-id": fire-generator-trace-us-prod
+        
+        "fire.generator.oauth-alternative.token-uri": https://idpdecathlon.oxylane.com/as/token.oauth2
+        "fire.generator.oauth-alternative.client.id": secret:ns-fire/fire/app#oauth-cc-client-id
+        "fire.generator.oauth-alternative.client.secret": secret:ns-fire/fire/app#oauth-cc-client-secret
+        "fire.generator.oauth-alternative.client.password": secret:ns-fire/fire/app#oauth-cc-client-secret
+        "fire.generator.oauth-alternative.scope": openid profile
+        "fire.generator.oauth-alternative.grant-type": password
+        "fire.generator.oauth.client.id": secret:ns-fire/fire/app#oauth-cc-client-id
+        "fire.generator.oauth.client.password": secret:ns-fire/fire/app#oauth-cc-client-secret
+        "fire.generator.oauth.client.secret": secret:ns-fire/fire/app#oauth-cc-client-secret
+        "fire.generator.oauth.token-uri": https://idpdecathlon.oxylane.com/as/token.oauth2
+        "spring.security.oauth2.resourceserver.jwt.userinfo-endpoint": https://idpdecathlon.oxylane.com/idp/userinfo.openid
+        #Kafka Finance properties
+        "fire.generator.kafka.filtered-poslog.window.duration": P1D
+        "fire.generator.kafka.username": secret:ns-fire/fire/app#kafka-fire-aiven-username
+        "fire.generator.kafka.password": secret:ns-fire/fire/app#kafka-fire-aiven-password
+        "fire.generator.kafka.truststore-type": JKS
+        "fire.generator.kafka.auth-credentials-source": USER_INFO
+        "fire.generator.kafka.identification-algorithm": ''
+        "fire.generator.kafka.security-protocol": SSL
+        ##FINANCE
+        "server.servlet.context-path": /fire/api/generator-us
+        "com.decathlon.finance.fedid.fedid-url": https://idpdecathlon.oxylane.com/as/token.oauth2
+        "com.decathlon.finance.fedid.fedid-client-id": secret:ns-fire/fire/app#oauth-cc-client-id
+        "com.decathlon.finance.fedid.fedid-client-secret": secret:ns-fire/fire/app#oauth-cc-client-secret
+        "com.decathlon.finance.ldap-api-sdk.ldap-api-url": https://api-eu.subsidia.org/directory/
+        "com.decathlon.finance.ldap-api-sdk.ldap-api-key": secret:ns-fire/fire/app#ldap-api-key
+        "security.oauth2.authorized-token-names": secret:ns-fire/fire/app#oauth-cc-client-id
+        "JAEGER_ENDPOINT": "https://app-finance.dktapp.cloud/tracing-collector/api/traces"
+        "security.oauth2.resourceserver.jwt.jwk-set-uri": https://idpdecathlon.oxylane.com/ext/JWKS
+        "security.oauth2.resourceserver.jwt.issuer": idpdecathlon
+        "SPRING_BOOT_MEMORY": 2g
+        "com.decathlon.finance.jaegertokafka.kafka.topic": decathlon_finance_jaeger_tracing
+        #"com.decathlon.finance.jaegertokafka.kafka.topic-trace": decathlon_finance_prod_fire_tracing
+        "com.decathlon.finance.jaegertokafka.kafka.topic-trace": none
+        "fire.generator.fiscal.topic": decathlon_finance_prod_fire_fiscal_error_topic
+        "spring.data.redis.host": fire-redis.ns-fire.svc.cluster.local
+        "spring.data.redis.port": 6379
+        #####  LIBRARY CONNECT #####
+        # DATABASE
+        "spring.datasource.url": jdbc:postgresql://postgre-pr-eu-peered-finance-fire.aivencloud.com:12656/fire_parameter?sslmode=require
+        "spring.datasource.username": secret:ns-fire/fire/app#postgres-user
+        "spring.datasource.password": secret:ns-fire/fire/app#postgres-password
+        # MASTERFI ACCOUNTING STRUCTURE API
+        "masterfi.accounting-structure.url": https://api-eu.subsidia.org/masterfi_accounting_structure/v1/
+        "masterfi.accounting-structure.key": secret:ns-fire/fire/app#masterfi-accounting-structure-api-key
+        # MEANS OF PAYMENT
+        "mop.data.url": https://api-eu.decathlon.net/posdata_referential/api/v1/tenders
+        "mop.api.key": secret:ns-fire/fire/app#api-key-posdata_referential
+        "mop.api.env": re7
+        # MASTERDATA
+        "masterdata.url": https://api-eu.subsidia.org/masterdata/v2/
+        "masterdata.api.key": secret:ns-fire/fire/app#api-key-masterdata
+        # TILL PSP
+        "till-psp.base-url": https://api-global.decathlon.net/till-psp/api/v1/transactions
+        "till-psp.api-key": secret:ns-fire/fire/app#till-psp-api-key
+        # CUBE ACCOUNTING API
+        "cube.accounting.base.url": https://api-eu.subsidia.org/accounting/
+        "cube.accounting.api.key": secret:ns-fire/fire/app#api-key-psp
+      image:
+        repository: europe-docker.pkg.dev/finance-6ztj/apps/fire/finance-api-fire-generator
+        tag: 47359ac-202410140950
+      replicaCount: 1
+      livenessProbe:
+        initialDelaySeconds: 90
+        periodSeconds: 20
+        failureThreshold: 2
+        
+    ##### GENERATOR BOSS #####
+    generator-boss:
+      livenessProbe:
+        initialDelaySeconds: 90
+        periodSeconds: 20
+        failureThreshold: 2
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 4Gi
+        requests:
+          cpu: 400m
+          memory: 3Gi
+      image:
+        repository: europe-docker.pkg.dev/finance-6ztj/apps/fire/finance-api-fire-boss-generator
+        tag: 3d164a6-202410141003
+      replicaCount: 1
+      springConfiguration:
+        "logging.level.root": WARN
+        "JAVA_ARGS": -Dcom.decathlon.environment=PRODUCTION
+        "fire.generator.application.environment": prod
+        "decathlon.swaggerui.oauth2.clientid": finance.fire
+        "server.servlet.context-path": /fire/api/generator-boss
+        "spring.jackson.property-naming-strategy": SNAKE_CASE
+        "spring.jackson.serialization.fail-on-empty-beans": false
+        "spring.main.allow-bean-definition-overriding": true
+        "management.endpoints.web.exposure.include": health
+        "management.endpoints.web.base-path": /v1/actuator
+        "fire.generator.kafka.filtered-poslog.bootstrap-servers": kafka-pr-fire-eu-peered-finance-fire.a.aivencloud.com:12658
+        "fire.generator.kafka.filtered-poslog.schema-registry": https://kafka-pr-fire-eu-peered-finance-fire.a.aivencloud.com:12661
+        "keystore-generator.ssl-endpoints.finance.access-key": secret:ns-fire/fire/app#kafka-fire-aiven-access-key
+        "keystore-generator.ssl-endpoints.finance.access-certificate": secret:ns-fire/fire/app#kafka-fire-aiven-access-cert
+        "keystore-generator.ssl-endpoints.finance.ca-certificate": secret:ns-fire/fire/app#kafka-fire-aiven-ca-cert
+        "fire.generator.kafka.password": secret:ns-fire/fire/app#kafka-fire-aiven-password
+        "fire.generator.kafka.truststore-type": JKS
+        "fire.generator.kafka.auth-credentials-source": USER_INFO
+        "fire.generator.kafka.identification-algorithm": ''
+        "fire.generator.kafka.sasl-mechanism": SCRAM-SHA-512
+        "fire.generator.kafka.security-protocol": SSL
+        "fire.generator.kafka.username": secret:ns-fire/fire/app#kafka-fire-aiven-username
+        "fire.generator.kafka.boss-test.window.duration": PT30S
+        "fire.generator.kafka.boss.window.duration": P1D
+        "fire.generator.kafka.accounting-document.topic-prefix": decathlon_finance_prod_fire_public_accountingDocument_1_
+        "fire.generator.kafka.filtered-boss.topic-prefix": decathlon_finance_prod_fire_public_filteredCash_
+        "fire.generator.kafka.filtered-summary.topic-prefix": decathlon_finance_prod_fire_public_filteredSummary_
+        "fire.generator.kafka.filtered-declaration.topic-prefix": decathlon_finance_prod_fire_public_filteredDeclaration_
+        #feign
+        "com.decathlon.finance.fedid.fedid-url": https://idpdecathlon.oxylane.com/as/token.oauth2
+        "com.decathlon.finance.fedid.fedid-client-id": secret:ns-fire/fire/app#oauth-cc-client-id
+        "com.decathlon.finance.fedid.fedid-client-secret": secret:ns-fire/fire/app#oauth-cc-client-secret
+        "com.decathlon.finance.ldap-api-sdk.ldap-api-url": https://api-eu.subsidia.org/directory/
+        "com.decathlon.finance.ldap-api-sdk.ldap-api-key": secret:ns-fire/fire/app#ldap-api-key
+        "SPRING_BOOT_MEMORY": 2g
+        "com.decathlon.finance.jaegertokafka.kafka.topic": decathlon_finance_jaeger_tracing
+        #"com.decathlon.finance.jaegertokafka.kafka.topic-trace": decathlon_finance_prod_fire_tracing
+        "com.decathlon.finance.jaegertokafka.kafka.topic-trace": none
+        "com.decathlon.finance.jaegertokafka.jaeger.service-name": FireGeneratorBoss-prod
+        "com.decathlon.finance.jaegertokafka.kafka.client-id": fire-generator-boss-trace-prod
+        "spring.data.redis.host": fire-redis.ns-fire.svc.cluster.local
+        "spring.data.redis.port": 6379
+        #####  LIBRARY CONNECT #####
+        # DATABASE
+        "spring.datasource.url": jdbc:postgresql://postgre-pr-eu-peered-finance-fire.aivencloud.com:12656/fire_parameter?sslmode=require
+        "spring.datasource.username": secret:ns-fire/fire/app#postgres-user
+        "spring.datasource.password": secret:ns-fire/fire/app#postgres-password
+        # MASTERFI ACCOUNTING STRUCTURE API
+        "masterfi.accounting-structure.url": https://api-eu.subsidia.org/masterfi_accounting_structure/v1/
+        "masterfi.accounting-structure.key": secret:ns-fire/fire/app#masterfi-accounting-structure-api-key
+        # MEANS OF PAYMENT
+        "mop.data.url": https://api-eu.decathlon.net/posdata_referential/api/v1/tenders
+        "mop.api.key": secret:ns-fire/fire/app#api-key-posdata_referential
+        "mop.api.env": re7
+        # MASTERDATA
+        "masterdata.url": https://api-eu.subsidia.org/masterdata/v2/
+        "masterdata.api.key": secret:ns-fire/fire/app#api-key-masterdata
+      nodeSelector:
+        type: app
+
+    ##### COMPARATOR #####
+    comparator:
+      livenessProbe:
+        initialDelaySeconds: 60
+        periodSeconds: 20
+      readinessProbe:
+        initialDelaySeconds: 60
+      resources:
+        limits:
+          cpu: 300m
+          memory: 2Gi
+        requests:
+          cpu: 50m
+          memory: 700Mi
+      image:
+        repository: europe-docker.pkg.dev/finance-6ztj/apps/fire/finance-api-fire-accounting-comparator
+        tag: dce21dc-202410140941
+      replicaCount: 1
+      springConfiguration:
+        "logging.level.root": INFO
+        "server.servlet.context-path": "/fire/api/comparator"
+        "fire.comparator.mail.sender.password": secret:ns-fire/fire/app#mail_application_password
+        "fire.comparator.prod.kafka.bootstrap-servers": kafka-pr-fire-eu-peered-finance-fire.a.aivencloud.com:12658
+        "fire.comparator.prod.kafka.schema-registry": https://kafka-pr-fire-eu-peered-finance-fire.a.aivencloud.com:12661
+        "fire.comparator.prod.kafka.topic-pattern": decathlon_finance_prod_fire_public_accountingDocument_1_data
+        "fire.comparator.prod.kafka.username": secret:ns-fire/fire/app#kafka-fire-aiven-username
+        "fire.comparator.prod.kafka.password": secret:ns-fire/fire/app#kafka-fire-aiven-password
+        "keystore-generator.ssl-endpoints.finance-prod.access-key": secret:ns-fire/fire/app#kafka-fire-aiven-access-key
+        "keystore-generator.ssl-endpoints.finance-prod.access-certificate": secret:ns-fire/fire/app#kafka-fire-aiven-access-cert
+        "keystore-generator.ssl-endpoints.finance-prod.ca-certificate": secret:ns-fire/fire/app#kafka-fire-aiven-ca-cert
+        "fire.comparator.preprod.kafka.bootstrap-servers": kafka-hp-eu-peered-finance-fire.aivencloud.com:12658
+        "fire.comparator.preprod.kafka.schema-registry": https://kafka-hp-eu-peered-finance-fire.aivencloud.com:12661
+        "fire.comparator.preprod.kafka.topic-pattern": decathlon_finance_preprod_fire_public_accountingDocument_1_data
+        "fire.comparator.preprod.kafka.username": secret:ns-fire/fire/app#kafka-fire-aiven-username-comparator-preprod
+        "fire.comparator.preprod.kafka.password": secret:ns-fire/fire/app#kafka-fire-aiven-password-comparator-preprod
+        "keystore-generator.ssl-endpoints.finance-preprod.access-key": secret:ns-fire/fire/app#kafka-fire-preprod-access-key
+        "keystore-generator.ssl-endpoints.finance-preprod.access-certificate": secret:ns-fire/fire/app#kafka-fire-preprod-access-cert
+        "keystore-generator.ssl-endpoints.finance-preprod.ca-certificate": secret:ns-fire/fire/app#kafka-fire-preprod-ca-cert
+      nodeSelector:
+        type: app
+  interval: 5m
